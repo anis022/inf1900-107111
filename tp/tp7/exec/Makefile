@@ -23,19 +23,19 @@ MCU=atmega324pa
 
 # Nom de votre projet
 # (utilisez un seul mot, exemple: 'monprojet')
-PROJECTNAME=libstatique
+PROJECTNAME=tp7
 
 # Fichiers sources
 # Utilisez le suffixe .cpp pour les fichiers C++
 # Listez tous les fichiers a compiler, separes par
 # un espace. exemple: 'tp1.c tp2.cpp':
-PRJSRC= $(wildcard *.cpp)
+PRJSRC= main.cpp
 
 # Inclusions additionnels (ex: -I/path/to/mydir)
-INC=
+INC=-I ../lib/			#modif marc
 
 # Libraires a lier (ex: -lmylib)
-LIBS=
+LIBS=-L ../lib/ -lstatique   #modif marc
 
 # Niveau d'optimization
 # Utilisez s (size opt), 1, 2, 3 ou 0 (off)
@@ -62,7 +62,6 @@ AVRDUDE_PROGRAMMERID=usbasp
 
 #compilateur utilise
 CC=avr-gcc
-AR=avr-ar
 #pour copier le contenu d'un fichier objet vers un autre
 OBJCOPY=avr-objcopy
 #pour permettre le transfert vers le microcontroleur
@@ -72,14 +71,15 @@ REMOVE=rm -f
 # HEXFORMAT -- format pour les fichiers produient .hex
 HEXFORMAT=ihex
 
-# EXEC=libstatique.a #modif marc
-# SRC=$(wildcard *.cpp) #modif marc
+
 
 ####### Options de compilation #######
 
 # Flags pour le compilateur en C
 CFLAGS=-I. -I/usr/include/simavr -MMD $(INC) -g -mmcu=$(MCU) -O$(OPTLEVEL) \
-	-std=c++14 -fshort-enums -funsigned-bitfields -funsigned-char -Wall
+	-std=c++14 -fpack-struct -fshort-enums \
+	-funsigned-bitfields -funsigned-char \
+	-Wall
 
 # Flag supplémentaire pour retirer le bogue de "array subscript 0 is outside 
 # array bounds" sur avr-gcc v12
@@ -92,16 +92,16 @@ endif
 CXXFLAGS=-fno-exceptions
 
 # Linker pour lier les librairies utilisees
-# LDFLAGS=-Wl,-Map,$(TRG).map -mmcu=$(MCU)
+LDFLAGS=-Wl,-Map,$(TRG).map -mmcu=$(MCU)
 
 
 
 ####### Cible (Target) #######
 
 #Nom des cibles par defaut
-TRG=$(PROJECTNAME).a
-# HEXROMTRG=$(PROJECTNAME).hex #modif marc --> il commente sa 
-# HEXTRG=$(HEXROMTRG) $(PROJECTNAME).ee.hex #modif marc --> il commente sa 
+TRG=$(PROJECTNAME).elf
+HEXROMTRG=$(PROJECTNAME).hex
+HEXTRG=$(HEXROMTRG) $(PROJECTNAME).ee.hex
 
 
 
@@ -131,15 +131,25 @@ OBJDEPS=$(CFILES:.c=.o) \
 # En plus de la commande make qui permet de compiler
 # votre projet, vous pouvez utilisez les commandes
 # make all, make install et make clean
-.PHONY: all install clean
+.PHONY: all install clean debug
 
 # Make all permet simplement de compiler le projet
 #
-all: $(TRG) # modif marc --> elle a enlever $(HEXROMTRG)
+# all: $(EXEC)
+
+# debug: CXXFLAGS += -DDEBUG -g modif marc ( sa c la version de abdul)
+# debug: $(EXEC)
+
+all: $(TRG) $(HEXROMTRG)
+
+debug: CFLAGS += -DDEBUG
+debug: CXXFLAGS += -DDEBUG
+debug: $(TRG) $(HEXROMTRG)
 
 # Implementation de la cible
-$(TRG): $(OBJDEPS) #modif marc: $(CC) $(LDFLAGS) -o $(TRG) $(OBJDEPS) \-lm $(LIBS)
-	$(AR) -crs $(TRG) $(OBJDEPS)
+$(TRG): $(OBJDEPS)
+	$(CC) $(LDFLAGS) -o $(TRG) $(OBJDEPS) \
+	-lm $(LIBS)
 
 # Production des fichiers object
 # De C a objet
@@ -156,29 +166,20 @@ $(TRG): $(OBJDEPS) #modif marc: $(CC) $(LDFLAGS) -o $(TRG) $(OBJDEPS) \-lm $(LIB
 # http://bit.ly/2580FU8
 
 # Production des fichiers hex a partir des fichiers elf
-# %.hex: %.elf												# modif marc --> il enleve sa 
-# 	$(OBJCOPY) -j .text -j .data -O $(HEXFORMAT) $< $@  	
-# modif marc --> il enleve sa 															
+%.hex: %.elf
+	$(OBJCOPY) -j .text -j .data -O $(HEXFORMAT) $< $@
+
 # Make install permet de compiler le projet puis
 # d'ecrire le programme en memoire flash dans votre
 # microcontroleur. Celui-ci doit etre branche par cable USB
-# install: $(HEXROMTRG)
-# 	$(AVRDUDE) -c $(AVRDUDE_PROGRAMMERID) \
-# 	-p $(MCU) -P usb -e -U flash:w:$(HEXROMTRG)
+install: $(HEXROMTRG)
+	$(AVRDUDE) -c $(AVRDUDE_PROGRAMMERID) \
+	-p $(MCU) -P -e -U flash:w:$(HEXROMTRG)
 
 # Make clean permet d'effacer tout les fichiers generes
 # lors de la compilation
 clean:
-	$(REMOVE) $(TRG) $(OBJDEPS) *.d
-
-# debug: CXXFLAGS += -DDEBUG -g -fno-exceptions
-# debug: all
-
-# modif marc 
-debug: CXXFLAGS += -DDEBUG -g
-debug: CFLAGS += -DDEBUG -g
-debug: all
-	serieViaUSB -l				
+	$(REMOVE) $(TRG) $(TRG).map $(OBJDEPS) $(HEXTRG) *.d
 
 # Pour plus d'information sur les phony target, consulter:
 # http://bit.ly/1WBQe61
@@ -190,5 +191,6 @@ debug: all
 # Finalement, ce tutoriel en ligne constitut une bonne 
 # introduction au Makefile:
 # http://bit.ly/1XvxsN3
+
 
 #####                    EOF                   #####
