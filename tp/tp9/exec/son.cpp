@@ -1,4 +1,5 @@
-#include "Son.hpp"
+#define F_CPU 8000000UL
+#include "son.hpp"
 
 Son::Son() : timer_(Timer::Id::TIMER2) {
     DDRD |= (1 << PD7);
