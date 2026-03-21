@@ -1,16 +1,19 @@
-#include <avr/io.h>
-#define F_CPU 8000000UL
+#ifndef SON_HPP
+#define SON_HPP
 
+#include <avr/io.h>
 #include "timer.hpp"
 
 class Son {
 
 public:
-    son();
-    jouerSon();
-    arreterSon();
-    
+    Son();
+    void jouer(uint8_t note);
+    void arreter();
+
 private:
     Timer timer_;
-    uint16_t calcOcr_(float frequence);
-}
+    uint16_t calculerOCR_(float frequence);
+};
+
+#endif
