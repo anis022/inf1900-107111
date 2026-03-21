@@ -96,6 +96,31 @@ void Timer::setModeCTC(Prescaler prescaler) {
 }
 
 void Timer::setPrescaler_(Prescaler prescaler) {
+    // Timer2 has a different CS bit-to-prescaler mapping than Timer0/Timer1
+    if (id_ == TIMER2) {
+        switch(prescaler) {
+        case NO_PRESCALING:  // CS=001 → clk/1
+            *TCCRnB_ |= (1 << CS00);
+            *TCCRnB_ &= ~((1 << CS01) | (1 << CS02));
+            break;
+        case PRESCALE_8:     // CS=010 → clk/8
+            *TCCRnB_ |= (1 << CS01);
+            *TCCRnB_ &= ~((1 << CS00) | (1 << CS02));
+            break;
+        case PRESCALE_64:    // CS=100 → clk/64
+            *TCCRnB_ |= (1 << CS02);
+            *TCCRnB_ &= ~((1 << CS00) | (1 << CS01));
+            break;
+        case PRESCALE_256:   // CS=110 → clk/256
+            *TCCRnB_ |= (1 << CS02) | (1 << CS01);
+            *TCCRnB_ &= ~(1 << CS00);
+            break;
+        case PRESCALE_1024:  // CS=111 → clk/1024
+            *TCCRnB_ |= (1 << CS02) | (1 << CS01) | (1 << CS00);
+            break;
+        }
+        return;
+    }
     switch(prescaler) {
     case NO_PRESCALING:
         *TCCRnB_ |= (1 << CS00);
