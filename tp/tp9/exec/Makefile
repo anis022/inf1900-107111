@@ -23,7 +23,7 @@ MCU=atmega324pa
 
 # Nom de votre projet
 # (utilisez un seul mot, exemple: 'monprojet')
-PROJECTNAME=tp7
+PROJECTNAME=tp9
 
 # Fichiers sources
 # Utilisez le suffixe .cpp pour les fichiers C++
@@ -32,10 +32,10 @@ PROJECTNAME=tp7
 PRJSRC= main.cpp
 
 # Inclusions additionnels (ex: -I/path/to/mydir)
-INC=-I ../../lib/
+INC=-I ../../lib/ -I ../../../lib/
 
 # Libraires a lier (ex: -lmylib)
-LIBS=-L ../../lib/ -lstatique 
+LIBS=-L ../../lib/ -lstatique
 
 # Niveau d'optimization
 # Utilisez s (size opt), 1, 2, 3 ou 0 (off)

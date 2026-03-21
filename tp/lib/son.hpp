@@ -1,6 +1,4 @@
-#ifndef SON_HPP
-#define SON_HPP
-
+#pragma once
 #include <avr/io.h>
 #include "timer.hpp"
 
@@ -15,5 +13,3 @@ private:
     Timer timer_;
     uint16_t calculerOCR_(float frequence);
 };
-
-#endif

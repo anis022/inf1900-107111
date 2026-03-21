@@ -1,7 +1,7 @@
 #define F_CPU 8000000UL
 #include <avr/io.h>
 #include <util/delay.h>
-#include "son.hpp"
+#include <libstatique.hpp>
 
 int main() {
     Son son;
