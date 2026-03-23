@@ -23,7 +23,7 @@ MCU=atmega324pa
 
 # Nom de votre projet
 # (utilisez un seul mot, exemple: 'monprojet')
-PROJECTNAME=tp7
+PROJECTNAME=libstatique
 
 # Fichiers sources
 # Utilisez le suffixe .cpp pour les fichiers C++
@@ -32,10 +32,10 @@ PROJECTNAME=tp7
 PRJSRC= $(wildcard *.cpp)
 
 # Inclusions additionnels (ex: -I/path/to/mydir)
-INC=-I ../lib/
+INC=
 
 # Libraires a lier (ex: -lmylib)
-LIBS=-L ../lib/ -lstatique 
+LIBS=
 
 # Niveau d'optimization
 # Utilisez s (size opt), 1, 2, 3 ou 0 (off)
@@ -62,6 +62,7 @@ AVRDUDE_PROGRAMMERID=usbasp
 
 #compilateur utilise
 CC=avr-gcc
+AR=avr-ar
 #pour copier le contenu d'un fichier objet vers un autre
 OBJCOPY=avr-objcopy
 #pour permettre le transfert vers le microcontroleur
@@ -71,15 +72,11 @@ REMOVE=rm -f
 # HEXFORMAT -- format pour les fichiers produient .hex
 HEXFORMAT=ihex
 
-
-
 ####### Options de compilation #######
 
 # Flags pour le compilateur en C
 CFLAGS=-I. -I/usr/include/simavr -MMD $(INC) -g -mmcu=$(MCU) -O$(OPTLEVEL) \
-	-std=c++14 -fpack-struct -fshort-enums \
-	-funsigned-bitfields -funsigned-char \
-	-Wall
+	-std=c++14 -fshort-enums -funsigned-bitfields -funsigned-char -Wall
 
 # Flag supplémentaire pour retirer le bogue de "array subscript 0 is outside 
 # array bounds" sur avr-gcc v12
@@ -91,17 +88,12 @@ endif
 # Flags pour le compilateur en C++
 CXXFLAGS=-fno-exceptions
 
-# Linker pour lier les librairies utilisees
-LDFLAGS=-Wl,-Map,$(TRG).map -mmcu=$(MCU)
-
 
 
 ####### Cible (Target) #######
 
 #Nom des cibles par defaut
-TRG=$(PROJECTNAME).elf
-HEXROMTRG=$(PROJECTNAME).hex
-HEXTRG=$(HEXROMTRG) $(PROJECTNAME).ee.hex
+TRG=$(PROJECTNAME).a
 
 
 
@@ -131,18 +123,13 @@ OBJDEPS=$(CFILES:.c=.o) \
 # En plus de la commande make qui permet de compiler
 # votre projet, vous pouvez utilisez les commandes
 # make all, make install et make clean
-.PHONY: all install debug lib clean
-
+.PHONY: all clean
 # Make all permet simplement de compiler le projet
-
-
-all: lib
-all: $(TRG) $(HEXROMTRG)
-
+#
+all: $(TRG) 
 # Implementation de la cible
-$(TRG): lib $(OBJDEPS)
-	$(CC) $(LDFLAGS) -o $(TRG) $(OBJDEPS) \
-	-lm $(LIBS)
+$(TRG): $(OBJDEPS)
+	$(AR) -crs $(TRG) $(OBJDEPS)
 
 # Production des fichiers object
 # De C a objet
@@ -158,42 +145,16 @@ $(TRG): lib $(OBJDEPS)
 # Pour plus d'information sur cette section, consulter:
 # http://bit.ly/2580FU8
 
-# Production des fichiers hex a partir des fichiers elf
-%.hex: %.elf
-	$(OBJCOPY) -j .text -j .data -O $(HEXFORMAT) $< $@
 
 # Make install permet de compiler le projet puis
 # d'ecrire le programme en memoire flash dans votre
 # microcontroleur. Celui-ci doit etre branche par cable USB
 
-install: lib
-install: $(HEXROMTRG)
-	# Étape 1 : compiler programme.txt → programme.bin
-	progmem -v -o ../ecriture/programme.bin ../ecriture/programme.txt
-	# Étape 2 : flasher le programme d'écriture dans le robot
-	$(MAKE) -C ../ecriture/ install
-	# Étape 3 : envoyer le bytecode dans l'EEPROM externe
-	serieViaUSB -e -f ../ecriture/programme.bin
-	# Étape 4 : flasher le programme d'exécution
-	$(AVRDUDE) -c $(AVRDUDE_PROGRAMMERID) \
-	-p $(MCU) -P usb -e -U flash:w:$(HEXROMTRG)
 
-debug: CXXFLAGS += -DDEBUG -g
-debug: CFLAGS += -DDEBUG -g
-debug: clean
-	$(MAKE) -C ../lib/ CXXFLAGS="$(CXXFLAGS)" CFLAGS="$(CFLAGS)"
-	$(MAKE) install
-	serieViaUSB -l				
-
-lib:
-	(cd ../lib/ && make)
 # Make clean permet d'effacer tout les fichiers generes
 # lors de la compilation
 clean:
-	$(REMOVE) $(TRG) $(TRG).map $(OBJDEPS) $(HEXTRG) *.d
-	$(MAKE) -C ../lib/ clean
-	$(MAKE) -C ../ecriture/ clean
-
+	$(REMOVE) $(TRG) $(OBJDEPS) *.d
 
 # Pour plus d'information sur les phony target, consulter:
 # http://bit.ly/1WBQe61
@@ -205,6 +166,5 @@ clean:
 # Finalement, ce tutoriel en ligne constitut une bonne 
 # introduction au Makefile:
 # http://bit.ly/1XvxsN3
-
 
 #####                    EOF                   #####
