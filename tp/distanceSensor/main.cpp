@@ -15,7 +15,7 @@ static const uint16_t NOTE_DURATION_MS  = 250;
 static const uint16_t NOTE_GAP_MS       = 125;
 
 // Seuil ADC capteur de distance pour détecter un poteau (~20 cm, calibré)
-static const uint16_t POTEAU_THRESHOLD  = 471;
+static const uint16_t POTEAU_THRESHOLD  = 100;
 
 // Angle de balayage (demi-arc gauche/droite) pour scanner le local
 static const uint16_t SCAN_HALF_ANGLE   = 45;
@@ -27,11 +27,7 @@ static const uint8_t  FORWARD_SPEED     = 110;
 // Enum état machine
 // ---------------------------------------------------------------------------
 enum class Action {
-    FIRST_TURN,
-    FIRST_CORRIDOR,
-    ENTER_FIRST_ROOM,
     SCAN_FIRST_ROOM,
-    PROCEED_TO_STORAGE,
     END,
 };
 
@@ -86,9 +82,9 @@ void followPath() {
     uint8_t leftSpeed  = FORWARD_SPEED;
     uint8_t rightSpeed = FORWARD_SPEED;
 
-    if (lineSensor.offTrackLeft())
+    if (lineSensor.robotOffTrackLeft())
         rightSpeed += lineSensor.offTrackAmount() * 15;
-    else if (lineSensor.offTrackRight())
+    else if (lineSensor.robotOffTrackRight())
         leftSpeed  += lineSensor.offTrackAmount() * 15;
 
     robot.motor.goForward(leftSpeed, rightSpeed);
@@ -107,30 +103,34 @@ void evacuatePoteau() {
     } while (distanceSensor.isObjectDetected(POTEAU_THRESHOLD));
 
     blinkGreenClear();
-}
+    }
+
 
 // Vérifie si un poteau est détecté dans la direction actuelle et l'évacue.
 void checkAndEvacuateIfNeeded() {
-    if (distanceSensor.isObjectDetected(POTEAU_THRESHOLD))
+    if (distanceSensor.isObjectDetected(POTEAU_THRESHOLD)) {
+        robot.motor.stop();
         evacuatePoteau();
+    }
 }
 
 // ===========================================================================
 // Scan du local de travail
 // ===========================================================================
 
-// Balaye le local : devant (sud), puis à droite (ouest), puis à gauche (est),
+// Balaye le local : commence côté SUD-EST, puis pivote vers SUD, puis OUEST,
 // puis revient au centre. Évacue chaque poteau trouvé.
 void scanRoom() {
-    // Vue de face (côté SUD)
-    checkAndEvacuateIfNeeded();
-
-    // Balayage côté OUEST
+    // Positionnement initial côté SUD-EST
     robot.motor.spinRight(SCAN_HALF_ANGLE);
     checkAndEvacuateIfNeeded();
 
-    // Balayage côté EST (passe par le centre)
-    robot.motor.spinLeft(SCAN_HALF_ANGLE * 2);
+    // Balayage côté SUD (centre)
+    robot.motor.spinLeft(SCAN_HALF_ANGLE);
+    checkAndEvacuateIfNeeded();
+
+    // Balayage côté OUEST
+    robot.motor.spinLeft(SCAN_HALF_ANGLE);
     checkAndEvacuateIfNeeded();
 
     // Retour au centre
@@ -144,30 +144,14 @@ void scanRoom() {
 void movementLogic(Action& currentAction) {
     switch (currentAction) {
 
-        case Action::FIRST_TURN:
-            while (!lineSensor.robotMiddle()) {
-                turnLeft();
-                _delay_ms(50);
-            }
-            break;
-
-        case Action::FIRST_CORRIDOR:
-            followPath();
-            break;
-
-        case Action::ENTER_FIRST_ROOM:
-            // Avance jusqu'à l'entrée du local (ligne rouge / bump line)
-            robot.motor.goForward(FORWARD_SPEED, FORWARD_SPEED);
-            break;
+        // case Action::ENTER_FIRST_ROOM:
+        //     // Avance jusqu'à l'entrée du local (ligne rouge / bump line)
+        //     robot.motor.goForward(FORWARD_SPEED, FORWARD_SPEED);
+        //     break;
 
         case Action::SCAN_FIRST_ROOM:
             robot.motor.stop();
             scanRoom();
-            break;
-
-        case Action::PROCEED_TO_STORAGE:
-            // Continue vers le local de rangement
-            followPath();
             break;
 
         case Action::END:
@@ -184,30 +168,14 @@ void movementLogic(Action& currentAction) {
 void switchLogic(Action& currentAction) {
     switch (currentAction) {
 
-        case Action::FIRST_TURN:
-            if (lineSensor.robotMiddle())
-                currentAction = Action::FIRST_CORRIDOR;
-            break;
-
-        case Action::FIRST_CORRIDOR:
-            if (lineSensor.robotBumpLine())
-                currentAction = Action::ENTER_FIRST_ROOM;
-            break;
-
-        case Action::ENTER_FIRST_ROOM:
-            // Avance brièvement pour se positionner à l'entrée, puis scanne
-            _delay_ms(300);
-            currentAction = Action::SCAN_FIRST_ROOM;
-            break;
+        // case Action::ENTER_FIRST_ROOM:
+        //     // Avance brièvement pour se positionner à l'entrée, puis scanne
+        //     _delay_ms(300);
+        //     currentAction = Action::SCAN_FIRST_ROOM;
+        //     break;
 
         case Action::SCAN_FIRST_ROOM:
-            // scanRoom() est bloquant : on arrive ici uniquement quand c'est fini
-            currentAction = Action::PROCEED_TO_STORAGE;
-            break;
-
-        case Action::PROCEED_TO_STORAGE:
-            if (lineSensor.robotBumpLine())
-                currentAction = Action::END;
+            currentAction = Action::END;
             break;
 
         case Action::END:
@@ -215,15 +183,20 @@ void switchLogic(Action& currentAction) {
     }
 }
 
-// ===========================================================================
-// Main
-// ===========================================================================
 
 int main() {
-    Action currentAction = Action::FIRST_TURN;
+    // Action currentAction = Action::SCAN_FIRST_ROOM;
 
-    while (true) {
-        movementLogic(currentAction);
-        switchLogic(currentAction);
+    // while (true) {
+    //     movementLogic(currentAction);
+    //     switchLogic(currentAction);
+    // }
+
+    while(true){
+        scanRoom();  
     }
+    // while(true){
+    //     DistanceSensor interpreter;
+    //     // interpreter.isObjectDetected(100);
+    //     }
 }
